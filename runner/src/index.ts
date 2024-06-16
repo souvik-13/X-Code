@@ -5,7 +5,6 @@ import cors from "cors";
 
 // import WebSocketService from "./services/websocket";
 import SocketService from "./services/socket";
-import TerminalService from "./services/terminal";
 // import AwsService from "./services/aws";
 
 const app = express();

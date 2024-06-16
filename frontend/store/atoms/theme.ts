@@ -2,5 +2,5 @@ import { atom } from "recoil";
 
 export const themeAtom = atom<string>({
   key: "theme",
-  default: "monokai",
+  default: "night-owl",
 });

@@ -13,9 +13,9 @@ export const Providers = ({ children }: { children: React.ReactNode }) => {
       enableSystem
       disableTransitionOnChange
     >
-      <SessionProvider>
+      {/* <SessionProvider> */}
         <RecoilRoot>{children}</RecoilRoot>
-      </SessionProvider>
+      {/* </SessionProvider> */}
 
       <Toaster richColors position="top-center" />
     </ThemeProvider>

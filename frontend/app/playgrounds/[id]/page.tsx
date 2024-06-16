@@ -111,7 +111,11 @@ function CoadingPage(params: { playgroundId: string }) {
                 onCollapse={() => setTerminalOpen(false)}
                 onExpand={() => setTerminalOpen(true)}
               >
-                <Terminals socket={socket} />
+                <Terminals
+                  socket={socket}
+                  terminalOpen={terminalOpen}
+                  playgroundId={params.playgroundId}
+                />
               </ResizablePanel>
             </ResizablePanelGroup>
           </ResizablePanel>

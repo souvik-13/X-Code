@@ -7,37 +7,48 @@ export default class TerminalService {
   }
 
   createTerminal({
-    id,
+    sessionId,
     playgroundId,
     onData,
   }: {
-    id: string;
+    sessionId: string;
     playgroundId: string;
     onData: (data: any, pid: string) => void;
   }) {
     const terminal = spawn("bash", [], {
       name: "xterm-color",
-      cols: 100,
-      rows: 30,
-      cwd: `${process.env.HOME}/workspace`,
+      cwd: `${process.env.HOME}/${playgroundId}`,
       env: process.env as { [key: string]: string },
     });
 
     terminal.onData((data) => onData(data, terminal.pid.toString()));
 
-    this.sessions[id].push({
+    if (!this.sessions[sessionId]) this.sessions[sessionId] = [];
+
+    this.sessions[sessionId].push({
       terminal: terminal,
       playgroundId: playgroundId,
     })
 
+    // console.log("Created terminal", sessionId, playgroundId, terminal.pid.toString());
+    // console.log(this.sessions[sessionId])
+
     terminal.onExit(() => {
-      delete this.sessions[id];
+      delete this.sessions[sessionId];
     });
     return terminal;
   }
 
   write(sessionId: string, terminalId: number, data: string) {
-    this.sessions[sessionId]?.[terminalId]?.terminal.write(data);
+    // console.log("Writing to terminal", sessionId, terminalId, data)
+    // console.log(this.sessions[sessionId])
+    let term = this.sessions[sessionId]?.[terminalId];
+    if (term) {
+      term.terminal.write(data);
+    }
+    else {
+      console.log("Terminal not found");
+    }
   }
 
   kill(sessionId: string, terminalId: number = -1) {
@@ -50,6 +61,6 @@ export default class TerminalService {
     else {
       this.sessions[sessionId]?.[terminalId].terminal.kill();
     }
-    
+
   }
 }

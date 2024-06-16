@@ -3,8 +3,7 @@ import { useRecoilState, useRecoilValue } from "recoil";
 import { Socket } from "socket.io-client";
 import { FilePathBreadcrumb } from "./file-path-breadcrumb";
 import { useEffect, useRef, useState } from "react";
-import Editor, { DiffEditor, useMonaco, loader } from "@monaco-editor/react";
-import { findLang } from "@/lib/find-lang";
+import Editor, { useMonaco, loader } from "@monaco-editor/react";
 import { toast } from "sonner";
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -58,7 +57,7 @@ const EditorComponent = ({ socket }: EditorComponentProps) => {
         setCurrentFile({ ...currentFile, content });
       });
     }
-  }, [currentFile, socket]);
+  }, [currentFile, loading, setCurrentFile, socket]);
 
   if (!socket) {
     return (
@@ -128,12 +127,20 @@ const EditorComponent = ({ socket }: EditorComponentProps) => {
           ref={editorRef}
           className="w-full h-full flex flex-col items-center justify-start "
         >
-          <FilePathBreadcrumb className="w-full" filePath={currentFile.path} />
+          <FilePathBreadcrumb className="w-full flex-none" filePath={currentFile.path} />
           <Editor
             theme={theme}
             value={code}
             onChange={(value) => {
               setCode(value);
+              if (!socket) {
+                toast.error("Socket not connected");
+                return;
+              }
+              socket.emit("update-file-content", {
+                filePath: currentFile.path,
+                content: value,
+              });
             }}
             language={currentFile.lang}
             loading={<div>Fetching content</div>}

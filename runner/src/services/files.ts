@@ -1,24 +1,23 @@
 import fs from "node:fs";
-import os from "node:os";
 import path from "node:path";
 
-interface File {
+interface Node {
   type: "file" | "dir";
   name: string;
   path: string;
 }
 
-export const fetchDir = (dir: string, baseDir: string): Promise<File[]> => {
+export const fetchDir = (dir: string, baseDir: string): Promise<Node[]> => {
   return new Promise((resolve, reject) => {
-    fs.readdir(dir, { withFileTypes: true }, (err, files) => {
+    fs.readdir(dir, { withFileTypes: true }, (err, nodes) => {
       if (err) {
         reject(err);
       } else {
         resolve(
-          files.map((file) => ({
-            type: file.isDirectory() ? "dir" : "file",
-            name: file.name,
-            path: `${baseDir}/${file.name}`,
+          nodes.map((node) => ({
+            type: node.isDirectory() ? "dir" : "file",
+            name: node.name,
+            path: `${baseDir}/${node.name}`,
           })),
         );
       }
