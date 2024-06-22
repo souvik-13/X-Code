@@ -29,7 +29,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { folderNameSchema } from "@/zod-types";
+import { folderNameSchema } from "@/types/zod-types";
 import { randomNameGenerator } from "@/lib/random-name-generator";
 import axios from "axios";
 import { toast } from "sonner";
@@ -79,6 +79,7 @@ const FormSchema = z.object({
 });
 
 export default function HomePage() {
+  const [open, setOpen] = useState<boolean>(false);
   const [projectName, setProjectName] = useRecoilState(projectNameAtom);
   const [status, setStatus] = useState<string>("");
   const router = useRouter();
@@ -168,7 +169,7 @@ export default function HomePage() {
           render={({ field }) => (
             <FormItem className="flex flex-col">
               <FormLabel>Framework</FormLabel>
-              <Popover>
+              <Popover open={open} onOpenChange={setOpen}>
                 <PopoverTrigger asChild>
                   <FormControl>
                     <Button
@@ -200,17 +201,18 @@ export default function HomePage() {
                           onSelect={() => {
                             form.setValue("frameWork", framework.value);
                             // close the popover
+                            setOpen(false);
                           }}
                           disabled={!framework.available}
                         >
-                          <Check
+                          {/* <Check
                             className={cn(
                               "mr-2 h-4 w-4",
                               framework.value === field.value
                                 ? "opacity-100"
                                 : "opacity-0",
                             )}
-                          />
+                          /> */}
                           {framework.label}
                         </CommandItem>
                       ))}

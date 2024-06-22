@@ -1,136 +1,132 @@
-"use client";
-import { currentFileAtom, fileTreeAtom } from "@/store/atoms";
 import { cn } from "@/lib/utils";
-import {
-  ChevronDown,
-  ChevronRight,
-  CopyMinus,
-  File,
-  FilePlus2,
-  Files as FilesIcon,
-  Folder,
-  FolderOpenIcon,
-  FolderPlus,
-  RotateCcw,
-} from "lucide-react";
-import { useEffect, useState } from "react";
-import { RecoilState, useRecoilState } from "recoil";
+import { ChevronRight, ChevronDown, FilePlus2, FolderPlus, RotateCcw, CopyMinus } from "lucide-react";
+import { EachNode } from "./EachNode";
+import { currentFileAtom, explorerTabsAtom, fileTreeAtom } from "@/store/atoms";
+import { useRecoilState, useRecoilValue } from "recoil";
+import { projectInfoAtom } from "@/store/atoms/projectInfo";
+import { Socket } from "socket.io-client";
+import { useCallback, useEffect } from "react";
+import { NodeType } from "@/types";
+import { toast } from "sonner";
 
 interface FilesProps {
-  collapsed: boolean;
-  className?: string;
-  projectName: string;
+    explorerTabs: {
+        value: string;
+        show: boolean;
+        collapsed: boolean;
+    }[];
+    setExplorerTabs: (tabs: { value: string; show: boolean; collapsed: boolean }[]) => void;
+    socket: Socket;
 }
 
-type _fileTreeType = typeof fileTreeAtom;
-type fileTreeType = _fileTreeType extends RecoilState<infer T> ? T : never;
+const Files = ({socket}: Partial<FilesProps>) => {
+    const [explorerTabs, setExplorerTabs] = useRecoilState(explorerTabsAtom);
+    const [currentFile, setCurrentFile] = useRecoilState(currentFileAtom);
+    const [fileTree, setFileTree] = useRecoilState(fileTreeAtom);
+    const projectInfo = useRecoilValue(projectInfoAtom);
 
-type dirType = {
-  name: string;
-  type: string;
-  path: string;
-  children: fileTreeType;
-};
-type fileType = {
-  name: string;
-  type: string;
-  path: string;
-  content?: string;
-  children?: undefined;
-};
-type fileTreeNodeType = dirType | fileType;
-const Files = ({ collapsed, className, projectName }: FilesProps) => {
-  const [fileTree, setFileTree] = useRecoilState(fileTreeAtom);
 
-  useEffect(() => {}, []);
+    const fetchChildren = useCallback(async (node: NodeType) => {
+        if(!socket || !socket.connected) {
+            toast.error("Socket not connected");
+            return;
+        }
+        if (socket && socket.connected) {
+            socket.emit("get-dir", { dirPath: node.path });
+        }
+    }, [fileTree]);
 
-  return collapsed ? (
-    <div className="w-full h-full flex flex-col items-center justify-start py-5">
-      <FilesIcon />
-    </div>
-  ) : (
-    <>
-      <div className="w-full flex items-center justify-between p-2">
-        <span className="text-sm font-bold flex-grow">
-          {projectName.toUpperCase()}
-        </span>
-        <div className="flex items-center justify-center gap-0">
-          <FilePlus2 className="p-0.5" size={20} strokeWidth={2} />
-          <FolderPlus className="p-0.5" size={20} strokeWidth={2} />
-          <RotateCcw className="p-0.5" size={20} strokeWidth={2} />
-          <CopyMinus className="p-0.5" size={20} strokeWidth={2} />
-        </div>
-      </div>
-      <div
-        className={cn(
-          className,
-          "w-full h-full p-2 flex flex-col gap-1 overflow-y-scroll scroll-smooth",
-        )}
-      >
-        {fileTree.map((node, index) => {
-          return <EachNode node={node} key={index} />;
-        })}
-      </div>
-    </>
-  );
-};
+    useEffect(() => {
+        if (!socket) {
+            return;
+        }
+        socket.on("dir-content", (data : {message: string; dirPath: string; content: NodeType[]}) => {
+            setFileTree((tree) => {
+                return tree.map((node) => {
+                    if (node.path === data.dirPath) {
+                        return {
+                            ...node,
+                            children: data.content,
+                        };
+                    }
+                    return node;
+                });
+            });
+        })
 
-const EachNode = ({ node }: { node: fileTreeNodeType }) => {
-  const [currentFile, setCurrentFile] = useRecoilState(currentFileAtom);
-  const [collapsed, setCollapsed] = useState<boolean>(true);
-  return (
-    <div
-      className="h-max transition-all cursor-pointer"
-      onClick={(e) => {
-        e.stopPropagation();
-        setCollapsed(!collapsed);
-      }}
-    >
-      <div
-        className={cn("flex items-center text-sm", {
-          "bg-foreground/50": currentFile?.path === node.path,
-        })}
-        onClick={async (e) => {
-          // e.stopPropagation();
+        return () => {
+            if (socket) {
+                socket.off("workspace-ready");
+            }
+        };
+    }, [socket]);
 
-          if (node.type === "file") {
-            // setCurrentFile(node as fileType);
-            // getFileContent(node.path);
-            // onFileContent((data) => {
-            //   const { content, message } = data;
-
-            //   // let currFile: fileType = { ...(node as fileType), content };
-            //   setCurrentFile({ ...(node as fileType), content });
-            // });
-          }
-        }}
-      >
-        {node.type === "file" ? (
-          <div className="pl-4">
-            <File size={16} strokeWidth={1.25} />
-          </div>
-        ) : collapsed ? (
-          <div className="flex items-center">
-            <ChevronRight size={16} strokeWidth={1.25} />
-            <Folder size={16} strokeWidth={1.25} />
-          </div>
-        ) : (
-          <div className="flex items-center">
-            <ChevronDown size={16} strokeWidth={1.25} />
-            <FolderOpenIcon size={16} strokeWidth={1.25} />
-          </div>
-        )}
-        <span className={cn("px-2")}>{node.name}</span>
-      </div>
-      {!collapsed && (
-        <div className="ml-2 flex flex-col gap-1">
-          {node.children?.map((_node, index) => {
-            return <EachNode node={_node} key={index} />;
-          })}
-        </div>
-      )}
-    </div>
-  );
-};
+    return (
+        <section className="flex-1 w-full group">
+            {/* root */}
+            <div className="w-full flex items-center justify-between p-2">
+                <span className="text-sm font-bold flex-grow flex items-center justify-start truncate pr-1">
+                    <span
+                        className="cursor-pointer"
+                        onClick={() => {
+                            setExplorerTabs((tabs) =>
+                                tabs.map((innerTab, tabIndex) => {
+                                    if (tabIndex === 0) {
+                                        return { ...innerTab, collapsed: !innerTab.collapsed };
+                                    }
+                                    return innerTab;
+                                }),
+                            );
+                        }}
+                    >
+                        {explorerTabs[0].collapsed ? (
+                            <ChevronRight className="p-0.5" size={20} strokeWidth={2} />
+                        ) : (
+                            <ChevronDown className="p-0.5" size={20} strokeWidth={2} />
+                        )}
+                    </span>
+                    {projectInfo?.name?.toUpperCase()}
+                </span>
+                <div
+                    className={cn(
+                        "group-hover:flex items-center justify-center gap-1 hidden",
+                        { hidden: explorerTabs[0].collapsed },
+                    )}
+                >
+                    <FilePlus2
+                        className="p-0.5 text-muted-foreground cursor-pointer rounded-sm hover:scale-110 hover:bg-accent-foreground/20"
+                        size={20}
+                        strokeWidth={2}
+                    />
+                    <FolderPlus
+                        className="p-0.5 text-muted-foreground cursor-pointer rounded-sm hover:scale-110 hover:bg-accent-foreground/20"
+                        size={20}
+                        strokeWidth={2}
+                    />
+                    <RotateCcw
+                        className="p-0.5 text-muted-foreground cursor-pointer rounded-sm hover:scale-110 hover:bg-accent-foreground/20"
+                        size={20}
+                        strokeWidth={2}
+                    />
+                    <CopyMinus
+                        className="p-0.5 text-muted-foreground cursor-pointer rounded-sm hover:scale-110 hover:bg-accent-foreground/20"
+                        size={20}
+                        strokeWidth={2}
+                    />
+                </div>
+            </div>
+            {/* folders/files */}
+            <div
+                className={cn(
+                    "w-full h-full pl-4 flex flex-col gap-1 overflow-y-scroll scroll-smooth",
+                )}
+            >
+                {fileTree.map((node, index) => {
+                    return <EachNode node={node} highlight key={index} fetchChildren={fetchChildren} />;
+                })}
+            </div>
+        </section>
+    );
+}
 
 export default Files;

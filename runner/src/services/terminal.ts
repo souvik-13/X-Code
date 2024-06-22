@@ -30,8 +30,8 @@ export default class TerminalService {
       playgroundId: playgroundId,
     })
 
-    // console.log("Created terminal", sessionId, playgroundId, terminal.pid.toString());
-    // console.log(this.sessions[sessionId])
+    console.log("Created terminal", sessionId, playgroundId, terminal.pid.toString());
+    console.table(this.sessions[sessionId])
 
     terminal.onExit(() => {
       delete this.sessions[sessionId];

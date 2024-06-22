@@ -3,8 +3,9 @@ import { Server as HTTPServer } from "node:http"
 import fs from "node:fs"
 import TerminalService from "./terminal";
 import AwsService from "./aws";
-import { fetchFileContent, filesTree, saveFile } from "./files";
+import { fetchDir, fetchFileContent, filesTree, saveFile } from "./files";
 import chokidar from "chokidar"
+import { dir } from "node:console";
 
 export default class SocketService {
   private _io: Server;
@@ -45,11 +46,31 @@ export default class SocketService {
         fs.mkdirSync(`${process.env.HOME}/${this.playgroundId}`, { recursive: true });
         console.log("Requesting workspace", key)
         await this.awsService.downloadS3Folder(key, `${process.env.HOME}/${this.playgroundId}`);
-        const fileTree = await filesTree(`${process.env.HOME}/${this.playgroundId}`);
+        // const fileTree = await filesTree(`${process.env.HOME}/${this.playgroundId}`);
+        const fileTree = await fetchDir(".", `${process.env.HOME}/${this.playgroundId}`);
         socket.emit("workspace-ready", {
           message: "Workspace ready",
           fileTree: fileTree,
         });
+      });
+
+      socket.on("get-dir", async (data) => {
+        const { dirPath } = data;
+        await fetchDir(dirPath, `${process.env.HOME}/${this.playgroundId}`)
+          .then((data) => {
+            socket.emit("dir-content", {
+              message: "Dir content ready",
+              dirPath: dirPath,
+              content: data,
+            });
+          })
+          .catch((err) => {
+            console.log(err);
+            socket.emit("dir-content-error", {
+              message: "Error fetching dir content",
+              error: err,
+            });
+          });
       });
 
       socket.on("get-file-content", async (data) => {
@@ -98,6 +119,7 @@ export default class SocketService {
             });
           }
         })
+        // console.log(this.terminalService.terminals)
       });
 
       socket.on("terminal-data", (data: { terminalId: number, data: string }) => {

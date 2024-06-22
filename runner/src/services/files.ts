@@ -1,33 +1,55 @@
 import fs from "node:fs";
 import path from "node:path";
 
-interface Node {
-  type: "file" | "dir";
-  name: string;
+type NodeType = {
+  isFolder: boolean;
   path: string;
-}
+  children?: NodeType[];
+};
 
-export const fetchDir = (dir: string, baseDir: string): Promise<Node[]> => {
+export const fetchDir = async (
+  dir: string,
+  baseDir: string = ""
+): Promise<NodeType[]> => {
   return new Promise((resolve, reject) => {
-    fs.readdir(dir, { withFileTypes: true }, (err, nodes) => {
-      if (err) {
-        reject(err);
-      } else {
-        resolve(
-          nodes.map((node) => ({
-            type: node.isDirectory() ? "dir" : "file",
-            name: node.name,
-            path: `${baseDir}/${node.name}`,
-          })),
-        );
+    fs.readdir(
+      path.join(baseDir, dir),
+      { withFileTypes: true },
+      (err, files) => {
+        if (err) {
+          reject(err);
+        }
+
+        const fileTree: NodeType[] = [];
+        files.forEach((file) => {
+          // replace the baseDir path with ""
+          fileTree.push({
+            isFolder: file.isDirectory(),
+            path: path.relative(baseDir, path.join(file.parentPath, file.name)),
+          });
+        });
+
+        fileTree.sort((a, b) => {
+          if (a.isFolder === b.isFolder) {
+            let a_name = a.path.split("/").pop() || "";
+            let b_name = b.path.split("/").pop() || "";
+            return a_name.localeCompare(b_name);
+          }
+          return a.isFolder ? -1 : 1;
+        });
+        resolve(fileTree);
       }
-    });
+    );
   });
 };
 
+fetchDir(".", "/home/souvik/webdev/vite-project").then((data) => {
+  console.log(data);
+}).catch((err) => {console.log(err)});
+
 export const fetchFileContent = (
   filePath: string,
-  baseDir: string = "",
+  baseDir: string = ""
 ): Promise<string> => {
   return new Promise((resolve, reject) => {
     fs.readFile(path.resolve(baseDir, filePath), "utf8", (err, data) => {
@@ -43,7 +65,7 @@ export const fetchFileContent = (
 export const saveFile = async (
   filePath: string,
   content: string,
-  baseDir: string = "",
+  baseDir: string = ""
 ): Promise<void> => {
   return new Promise((resolve, reject) => {
     fs.writeFile(path.resolve(baseDir, filePath), content, "utf8", (err) => {
@@ -84,7 +106,7 @@ export type FileTree = (
 
 export const filesTree = async (
   dir: string,
-  baseDir = "",
+  baseDir = ""
 ): Promise<FileTree> => {
   const files = await fs.promises.readdir(dir, { withFileTypes: true });
   const tree = await Promise.all(
@@ -106,7 +128,7 @@ export const filesTree = async (
           path: relativePath,
         };
       }
-    }),
+    })
   );
 
   // sort nodes by type and name. The dirs will be first, then the files and they will be sorted by name

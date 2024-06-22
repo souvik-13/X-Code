@@ -19,6 +19,9 @@ import { WebLinksAddon } from "@xterm/addon-web-links";
 import { Unicode11Addon } from "@xterm/addon-unicode11";
 import { useRecoilValue } from "recoil";
 import { projectInfoAtom } from "@/store/atoms/projectInfo";
+import { toast } from "sonner";
+
+import "./terminal.css"
 
 interface TerminalsProps {
   socket: Socket;
@@ -27,6 +30,18 @@ interface TerminalsProps {
   collapse?: () => void;
   expand?: () => void;
 }
+
+const termColors = [
+  "term_red",
+  "term_green",
+  "term_blue",
+  "term_yellow",
+  "term_purple",
+  "term_cyan",
+  "term_orange",
+  "term_pink",
+] as const;
+
 
 function ab2str(buffer: Buffer | ArrayBuffer) {
   const decoder = new TextDecoder("utf-8");
@@ -47,41 +62,20 @@ const Terminals = ({
   const expandTerminals = useCallback(() => {
     // expand();
   }, []);
-  // const terminalRef = useRef();
 
-  // const [Terminal, setTerminal] = useState<any>(null);
-  // const [FitAddon, setFitAddon] = useState<any>(null);
-  // const [CanvasAddon, setCanvasAddon] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
 
-  // useEffect(() => {
-  //   if (terminalOpen) {
-  //     // Dynamically import @xterm modules
-  //     import("@xterm/xterm").then((module) => {
-  //       setTerminal(() => module.Terminal);
-  //     });
-  //     import("@xterm/addon-fit").then((module) => {
-  //       setFitAddon(() => module.FitAddon);
-  //     });
-  //     import("@xterm/addon-canvas").then((module) => {
-  //       setCanvasAddon(() => module.CanvasAddon);
-  //     });
-  //   }
-  // }, [terminalOpen]);
 
   const [terminals, setTerminals] = useState<
-    { pid?: string; term?: Terminal }[]
-  >(Array(5).fill({}));
+    { pid?: string; term?: Terminal; color?: string }[]
+  >(Array(9).fill({}));
 
-  const terminalRefs = useRef<(HTMLDivElement | null)[]>(
-    Array(5).fill(null) as (HTMLDivElement | null)[],
-  );
-
-  const assignTerminalRef = (element: HTMLDivElement, index: number) => {
-    // Directly assign the element to the current[index] of the refs array
-    terminalRefs.current[index] = element;
-  };
 
   const [activeTerminal, setActiveTerminal] = useState<string | null>(null);
+
+  useEffect(() => {
+    console.log("active terminal", activeTerminal);
+  }, [activeTerminal]);
 
   const createTerminal = useCallback(() => {
     if (!socket) {
@@ -91,8 +85,8 @@ const Terminals = ({
 
     const index = terminals.findIndex((terminal) => !terminal.term);
 
-    if (index === -1) {
-      console.log("No available terminal");
+    if (index === -1 || index > 7) {
+      toast.error("No available terminal");
       return;
     }
     if (!document.getElementById(`term-${index}`)) {
@@ -160,7 +154,7 @@ const Terminals = ({
 
     setTerminals((prev) => {
       const newTerminals = [...prev];
-      newTerminals[index] = { term };
+      newTerminals[index] = { term, color: termColors[index] };
       console.log("created terminal", index, newTerminals);
       return newTerminals;
     });
@@ -182,15 +176,15 @@ const Terminals = ({
 
       socket.emit("kill-terminal", { terminalId: index });
 
-      // if (index === 0) {
-      //   if (terminals[1].term) {
-      //     setActiveTerminal("1");
-      //   } else {
-      //     setActiveTerminal(null);
-      //   }
-      // } else {
-      //   setActiveTerminal(`${index - 1}`);
-      // }
+      if (index === 0) {
+        if (terminals[1].term) {
+          setActiveTerminal("1");
+        } else {
+          setActiveTerminal(null);
+        }
+      } else {
+        setActiveTerminal(`${index - 1}`);
+      }
 
       setTerminals((prev) => {
         const newTerminals = [...prev];
@@ -202,14 +196,12 @@ const Terminals = ({
     [socket],
   );
 
+  // listen for terminal data from server
   useEffect(() => {
     if (!socket) return;
 
     const index = terminals.findIndex((terminal) => !terminal.term);
     if (index === -1) return;
-    if (index === 0) {
-      // createTerminal();
-    }
 
     socket.on("terminal-data", (data) => {
       const { terminalId, terminalData, pid } = data;
@@ -217,7 +209,6 @@ const Terminals = ({
         console.log("Terminal not found");
         return;
       }
-
       let term = terminals[terminalId].term;
       if (term) {
         term.write(ab2str(terminalData));
@@ -230,12 +221,13 @@ const Terminals = ({
     };
   }, [socket, terminals, createTerminal, activeTerminal]);
 
+  // load terminal when workspace is ready
   useEffect(() => {
     if (!socket) return;
-    if (activeTerminal === null) {
-      createTerminal();
-      setActiveTerminal("0");
-    }
+    socket.on("workspace-ready", () => {
+      setLoading(false);
+      if(!activeTerminal) createTerminal();
+    })
   }, [socket, createTerminal, activeTerminal]);
 
   return (
@@ -253,23 +245,19 @@ const Terminals = ({
                   id={`termIcon-${index}`}
                   key={index}
                   className={cn(
-                    "h-full w-max px-4 flex items-center justify-end gap-2 text-sm font-extralight bg-accent hover:bg-accent-hover cursor-pointer group",
-                    {
-                      "bg-accent-foreground/20":
-                        activeTerminal === index.toString(),
-                    },
+                    "h-full w-max px-4 flex items-center justify-end gap-2 text-sm  cursor-pointer group",
+                    activeTerminal === index.toString() ? `${terminal.color}_active` : terminal.color,
+
                   )}
                   onClick={() => {
                     setActiveTerminal(index.toString());
                   }}
                 >
-                  <TerminalIcon />
-                  <span className="">Terminal</span>
-                  <span className="">{index + 1}</span>
+                  <TerminalIcon className="text-foreground" />
                   <XIcon
                     size={20}
                     strokeWidth={2}
-                    className="flex-none cursor-pointer hover:bg-accent-foreground/20 group-hover:block "
+                    className={cn("flex-none cursor-pointer hover:bg-accent-foreground/20 group-hover:block opacity-0 group-hover:opacity-100")}
                     onClick={() => {
                       killTerminal(index);
                     }}

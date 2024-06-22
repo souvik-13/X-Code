@@ -1,11 +1,8 @@
+import { NodeType } from "@/types";
 import { atom } from "recoil";
 
-type FileTree = (
-  | { name: string; type: string; path: string; children: FileTree }
-  | { name: string; type: string; path: string; children?: undefined}
-)[];
 
-export const fileTreeAtom = atom<FileTree>({
+export const fileTreeAtom = atom<NodeType[]>({
   key: "fileTree",
   default: [],
 });

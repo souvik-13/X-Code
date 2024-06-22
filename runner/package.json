@@ -5,19 +5,19 @@
   "private": true,
   "scripts": {
     "start": "node --env-file=.env dist/index.js",
-    "dev": "tsc-watch --onSuccess \"node --env-file=.env dist/index.js\"",
+    "dev": "tsc-watch --onSuccess \"node --env-file=.env.local dist/index.js\"",
     "build": "tsc -p .",
     "server:add": "pnpm add"
   },
   "devDependencies": {
     "@types/cors": "^2.8.17",
     "@types/express": "^4.17.21",
-    "@types/node": "^17.0.13",
+    "@types/node": "^20",
     "tsc-watch": "^6.2.0",
-    "typescript": "^5.3.3"
+    "typescript": "^5.5.2"
   },
   "dependencies": {
-    "@aws-sdk/client-s3": "^3.588.0",
+    "@aws-sdk/client-s3": "^3.600.0",
     "chokidar": "^3.6.0",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",

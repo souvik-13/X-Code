@@ -1,14 +1,12 @@
+import { NodeType } from "@/types";
 import { atom } from "recoil";
 
-type File = {
-  name: string;
-  type: string;
-  path: string;
-  content?: string;
+interface CurrentFile extends NodeType {
   lang?: string;
-};
+  content?: string;
+}
 
-export const openFilesAtom = atom<File[]>({
+export const openFilesAtom = atom<CurrentFile[]>({
   key: "openFiles",
   default: [],
 });
