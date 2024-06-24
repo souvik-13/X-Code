@@ -1,132 +1,155 @@
 import { cn } from "@/lib/utils";
-import { ChevronRight, ChevronDown, FilePlus2, FolderPlus, RotateCcw, CopyMinus } from "lucide-react";
+import {
+  ChevronRight,
+  ChevronDown,
+  FilePlus2,
+  FolderPlus,
+  RotateCcw,
+  CopyMinus,
+} from "lucide-react";
 import { EachNode } from "./EachNode";
-import { currentFileAtom, explorerTabsAtom, fileTreeAtom } from "@/store/atoms";
+import {
+  selectedFileAtom,
+  explorerTabsAtom,
+  fileTreeAtom,
+  selectedFolderAtom,
+} from "@/store/atoms";
 import { useRecoilState, useRecoilValue } from "recoil";
-import { projectInfoAtom } from "@/store/atoms/projectInfo";
-import { Socket } from "socket.io-client";
-import { useCallback, useEffect } from "react";
+import { projectInfoAtom } from "@/store/atoms/playground/projectInfo";
+import { useCallback, useEffect, useState } from "react";
 import { NodeType } from "@/types";
+import { Socket } from "socket.io-client";
 import { toast } from "sonner";
+import { set } from "zod";
+import { useSocket } from "@/context/socket-provider";
 
 interface FilesProps {
-    explorerTabs: {
-        value: string;
-        show: boolean;
-        collapsed: boolean;
-    }[];
-    setExplorerTabs: (tabs: { value: string; show: boolean; collapsed: boolean }[]) => void;
-    socket: Socket;
+  // socket: Socket;
+  loading: boolean;
+  setLoading: (loading: boolean) => void;
 }
 
-const Files = ({socket}: Partial<FilesProps>) => {
-    const [explorerTabs, setExplorerTabs] = useRecoilState(explorerTabsAtom);
-    const [currentFile, setCurrentFile] = useRecoilState(currentFileAtom);
-    const [fileTree, setFileTree] = useRecoilState(fileTreeAtom);
-    const projectInfo = useRecoilValue(projectInfoAtom);
+const Files = ({ loading, setLoading }: FilesProps) => {
+  const [explorerTabs, setExplorerTabs] = useRecoilState(explorerTabsAtom);
+  const [currentFolder, setCurrentFolder] = useRecoilState(selectedFolderAtom);
+  const [currentFile, setCurrentFile] = useRecoilState(selectedFileAtom);
+  const [fileTree, setFileTree] = useRecoilState(fileTreeAtom);
+  const projectInfo = useRecoilValue(projectInfoAtom);
+
+  const { isConnected, requestDirectory } = useSocket();
+
+  const [addfileTrigger, setAddfileTrigger] = useState<boolean>(false);
+  const [addfolderTrigger, setAddfolderTrigger] = useState<boolean>(false);
+  const [renameTrigger, setRenameTrigger] = useState<boolean>(false);
+
+  const fetchChildren = useCallback(async (node: NodeType) => {
+    if (!isConnected) {
+      toast.error("Socket not connected");
+      return;
+    }
+    setLoading(true);
+    requestDirectory(node.path, (data) => {
+      setLoading(false);
+      if (data.error) {
+        toast.error(data.error);
+        return;
+      }
+      if (data.status === "success") {
+        setFileTree((tree) => {
+          if (tree) {
+            let newTree = { ...tree };
+
+            const updateChildren = (node: NodeType): NodeType => {
+              if (node.path === data.dirPath) {
+                return {
+                  ...node,
+                  children: data.content!.children,
+                };
+              }
+              if (node.children) {
+                return {
+                  ...node,
+                  children: node.children.map(updateChildren),
+                };
+              }
+              return node;
+            };
+
+            newTree = updateChildren(newTree);
+            return newTree;
+          }
+          return tree;
+        });
+      }
+    });
+  }, [fileTree, isConnected]);
+
+  // useEffect(() => {
+  //   socket.on(
+  //     "dir-content",
+  //     (data: { message: string; dirPath: string; content: NodeType }) => {
+  //       try {
+  //         setFileTree((tree) => {
+  //           if (tree) {
+  //             // console.log(data);
+  //             let newTree = { ...tree };
+  //             // update the children of the parent node
+  //             const updateChildren = (node: NodeType): NodeType => {
+  //               if (node.path === data.dirPath) {
+  //                 // Create a new node with updated children
+  //                 return {
+  //                   ...node,
+  //                   children: data.content.children,
+  //                 };
+  //               }
+  //               if (node.children) {
+  //                 // Recursively update children by creating a new array of children
+  //                 return {
+  //                   ...node,
+  //                   children: node.children.map(updateChildren),
+  //                 };
+  //               }
+  //               return node;
+  //             };
+  //             newTree = updateChildren(newTree);
+  //             return newTree;
+  //           }
+  //           return tree;
+  //         });
+  //       } catch (error) {
+  //         console.log(error);
+  //       } finally {
+  //         setLoading(false);
+  //       }
+  //     }
+  //   );
+
+  //   return () => {
+  //     if (socket) {
+  //       socket.off("dir-content");
+  //     }
+  //   };
+  // }, [isConnected]);
 
 
-    const fetchChildren = useCallback(async (node: NodeType) => {
-        if(!socket || !socket.connected) {
-            toast.error("Socket not connected");
-            return;
-        }
-        if (socket && socket.connected) {
-            socket.emit("get-dir", { dirPath: node.path });
-        }
-    }, [fileTree]);
-
-    useEffect(() => {
-        if (!socket) {
-            return;
-        }
-        socket.on("dir-content", (data : {message: string; dirPath: string; content: NodeType[]}) => {
-            setFileTree((tree) => {
-                return tree.map((node) => {
-                    if (node.path === data.dirPath) {
-                        return {
-                            ...node,
-                            children: data.content,
-                        };
-                    }
-                    return node;
-                });
-            });
-        })
-
-        return () => {
-            if (socket) {
-                socket.off("workspace-ready");
-            }
-        };
-    }, [socket]);
-
-    return (
-        <section className="flex-1 w-full group">
-            {/* root */}
-            <div className="w-full flex items-center justify-between p-2">
-                <span className="text-sm font-bold flex-grow flex items-center justify-start truncate pr-1">
-                    <span
-                        className="cursor-pointer"
-                        onClick={() => {
-                            setExplorerTabs((tabs) =>
-                                tabs.map((innerTab, tabIndex) => {
-                                    if (tabIndex === 0) {
-                                        return { ...innerTab, collapsed: !innerTab.collapsed };
-                                    }
-                                    return innerTab;
-                                }),
-                            );
-                        }}
-                    >
-                        {explorerTabs[0].collapsed ? (
-                            <ChevronRight className="p-0.5" size={20} strokeWidth={2} />
-                        ) : (
-                            <ChevronDown className="p-0.5" size={20} strokeWidth={2} />
-                        )}
-                    </span>
-                    {projectInfo?.name?.toUpperCase()}
-                </span>
-                <div
-                    className={cn(
-                        "group-hover:flex items-center justify-center gap-1 hidden",
-                        { hidden: explorerTabs[0].collapsed },
-                    )}
-                >
-                    <FilePlus2
-                        className="p-0.5 text-muted-foreground cursor-pointer rounded-sm hover:scale-110 hover:bg-accent-foreground/20"
-                        size={20}
-                        strokeWidth={2}
-                    />
-                    <FolderPlus
-                        className="p-0.5 text-muted-foreground cursor-pointer rounded-sm hover:scale-110 hover:bg-accent-foreground/20"
-                        size={20}
-                        strokeWidth={2}
-                    />
-                    <RotateCcw
-                        className="p-0.5 text-muted-foreground cursor-pointer rounded-sm hover:scale-110 hover:bg-accent-foreground/20"
-                        size={20}
-                        strokeWidth={2}
-                    />
-                    <CopyMinus
-                        className="p-0.5 text-muted-foreground cursor-pointer rounded-sm hover:scale-110 hover:bg-accent-foreground/20"
-                        size={20}
-                        strokeWidth={2}
-                    />
-                </div>
-            </div>
-            {/* folders/files */}
-            <div
-                className={cn(
-                    "w-full h-full pl-4 flex flex-col gap-1 overflow-y-scroll scroll-smooth",
-                )}
-            >
-                {fileTree.map((node, index) => {
-                    return <EachNode node={node} highlight key={index} fetchChildren={fetchChildren} />;
-                })}
-            </div>
-        </section>
-    );
-}
+  return (
+    <div className="flex-1 w-full h-full group">
+      {fileTree && (
+        <EachNode
+          node={fileTree}
+          highlight
+          root
+          fetchChildren={fetchChildren}
+          addfileTrigger={addfileTrigger}
+          setAddfileTrigger={setAddfileTrigger}
+          addfolderTrigger={addfolderTrigger}
+          setAddfolderTrigger={setAddfolderTrigger}
+          renameTrigger={renameTrigger}
+          setRenameTrigger={setRenameTrigger}
+        />
+      )}
+    </div>
+  );
+};
 
 export default Files;

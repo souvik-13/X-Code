@@ -1,11 +1,13 @@
-import { Server } from "socket.io"
-import { Server as HTTPServer } from "node:http"
-import fs from "node:fs"
+import { Server } from "socket.io";
+import { Server as HTTPServer } from "node:http";
+import fs from "node:fs";
 import TerminalService from "./terminal";
 import AwsService from "./aws";
 import { fetchDir, fetchFileContent, filesTree, saveFile } from "./files";
-import chokidar from "chokidar"
+import chokidar from "chokidar";
 import { dir } from "node:console";
+import e from "express";
+import { NodeType } from "../types";
 
 export default class SocketService {
   private _io: Server;
@@ -26,78 +28,137 @@ export default class SocketService {
     this.initHandlers();
   }
 
-
   private initHandlers() {
     this.io.on("connection", (socket) => {
       console.log("Client connected", socket.id);
-
       // user credentials
       // console.log(socket.handshake)
 
       // this.userId = socket.id;
 
-      socket.on("requestworkspace", async (data) => {
+      socket.on("req-workspace", async (data, callback) => {
         const { projectName } = data;
         this.playgroundId = projectName;
 
         const key = `playgrounds/${projectName}`;
-        // delete the current /workspace folder
-        // fs.rmdirSync(`${process.env.HOME}/workspace`, { recursive: true });
-        fs.mkdirSync(`${process.env.HOME}/${this.playgroundId}`, { recursive: true });
-        console.log("Requesting workspace", key)
-        await this.awsService.downloadS3Folder(key, `${process.env.HOME}/${this.playgroundId}`);
-        // const fileTree = await filesTree(`${process.env.HOME}/${this.playgroundId}`);
-        const fileTree = await fetchDir(".", `${process.env.HOME}/${this.playgroundId}`);
-        socket.emit("workspace-ready", {
-          message: "Workspace ready",
-          fileTree: fileTree,
-        });
+
+        let responseData: {
+          status: string;
+          error: string | undefined;
+          fileTree: NodeType | undefined;
+        } = {
+          status: "success" || "error",
+          error: undefined,
+          fileTree: undefined,
+        };
+
+        try {
+          // delete the current /workspace folder
+          // fs.rmdirSync(`${process.env.HOME}/workspace`, { recursive: true });
+          fs.mkdirSync(`${process.env.HOME}/${this.playgroundId}`, {
+            recursive: true,
+          });
+          console.log("Requesting workspace", key);
+          await this.awsService.downloadS3Folder(
+            key,
+            `${process.env.HOME}/${this.playgroundId}`
+          );
+          // const fileTree = await filesTree(`${process.env.HOME}/${this.playgroundId}`);
+          // const fileTree = await fetchDir({
+          //   dir: ".",
+          //   baseDir: `${process.env.HOME}/${this.playgroundId}`,
+          //   exclude: [".git"],
+          // });
+          responseData.status = "success";
+          // responseData.fileTree = fileTree;
+          callback(responseData);
+          // socket.emit("workspace-ready", { fileTree: fileTree });
+        } catch (error) {
+          console.error(error);
+          responseData.status = "error";
+          responseData.error = "Error fetching workspace";
+          callback(responseData);
+          // socket.emit("workspace-error", { error: error });
+        }
       });
 
-      socket.on("get-dir", async (data) => {
+      socket.on("get-dir", async (data, callback) => {
         const { dirPath } = data;
-        await fetchDir(dirPath, `${process.env.HOME}/${this.playgroundId}`)
+        let responseData: {
+          status: string;
+          error: string | undefined;
+          dirPath: string;
+          content: NodeType | undefined;
+        };
+        await fetchDir({
+          dir: dirPath,
+          baseDir: `${process.env.HOME}/${this.playgroundId}`,
+          exclude: [".git", "node_modules"],
+        })
           .then((data) => {
-            socket.emit("dir-content", {
-              message: "Dir content ready",
+            responseData = {
+              status: "success",
+              error: undefined,
               dirPath: dirPath,
               content: data,
-            });
+            };
           })
           .catch((err) => {
             console.log(err);
-            socket.emit("dir-content-error", {
-              message: "Error fetching dir content",
-              error: err,
-            });
+            responseData = {
+              status: "error",
+              error: "Error fetching directory",
+              dirPath: dirPath,
+              content: undefined,
+            };
+          })
+          .finally(() => {
+            callback(responseData);
           });
       });
 
-      socket.on("get-file-content", async (data) => {
+      socket.on("get-file-content", async (data, callback) => {
         const { filePath } = data;
-        await fetchFileContent(filePath, `${process.env.HOME}/${this.playgroundId}`)
+        let responseData: {
+          status: string;
+          error: string | undefined;
+          content: string | undefined;
+        };
+        await fetchFileContent(
+          filePath,
+          `${process.env.HOME}/${this.playgroundId}`
+        )
           .then((data) => {
-            socket.emit("file-content", {
-              message: "File content ready",
+            responseData = {
+              status: "success",
+              error: undefined,
               content: data,
-            });
+            };
           })
           .catch((err) => {
             console.log(err);
-            socket.emit("file-content-error", {
-              message: "Error fetching file content",
-              error: err,
-            });
+            responseData = {
+              status: "error",
+              error: "Error fetching file content",
+              content: undefined,
+            };
+          })
+          .finally(() => {
+            callback(responseData);
           });
       });
 
       socket.on("update-file-content", async (data) => {
         const { filePath, content } = data;
-        await saveFile(filePath, content, `${process.env.HOME}/${this.playgroundId}`)
+        await saveFile(
+          filePath,
+          content,
+          `${process.env.HOME}/${this.playgroundId}`
+        )
           .then(async () => {
             await this.awsService.uploadFile(
               `playgrounds/${this.playgroundId}/${filePath}`,
-              content,
+              content
             );
           })
           .catch((err) => {
@@ -105,34 +166,54 @@ export default class SocketService {
           });
       });
 
-      socket.on("request-terminal", (data: { terminalId: number, playgroundId: string }) => {
-        const { terminalId, playgroundId } = data;
-        this.terminalService.createTerminal({
-          sessionId: socket.id,
-          playgroundId,
-          onData: (data, pid) => {
-            // console.log(Buffer.from(data, "utf-8").toString())
-            socket.emit("terminal-data", {
-              terminalId: terminalId,
-              terminalData: Buffer.from(data, "utf-8"),
-              pid: pid,
-            });
-          }
-        })
-        // console.log(this.terminalService.terminals)
-      });
+      socket.on(
+        "request-terminal",
+        (data: { terminalId: number; playgroundId: string }) => {
+          const { terminalId, playgroundId } = data;
+          this.terminalService.createTerminal({
+            sessionId: socket.id,
+            playgroundId,
+            onData: (data, pid) => {
+              // console.log(Buffer.from(data, "utf-8").toString())
+              socket.emit("terminal-data", {
+                terminalId: terminalId,
+                terminalData: Buffer.from(data, "utf-8"),
+                pid: pid,
+              });
+            },
+          });
+          // console.log(this.terminalService.terminals)
+        }
+      );
 
-      socket.on("terminal-data", (data: { terminalId: number, data: string }) => {
-        const { terminalId, data: terminalData } = data;
-        // console.log("Received terminal data", terminalData, "from terminal", terminalId)
-        this.terminalService.write(socket.id, terminalId, terminalData);
-      });
+      socket.on(
+        "terminal-data",
+        (data: { terminalId: number; data: string }) => {
+          const { terminalId, data: terminalData } = data;
+          // console.log("Received terminal data", terminalData, "from terminal", terminalId)
+          this.terminalService.write(socket.id, terminalId, terminalData);
+        }
+      );
+
+      socket.on(
+        "terminal-data-bin",
+        (data: { terminalId: number; terminalData: string }) => {
+          const { terminalId, terminalData } = data;
+          // console.log("Received terminal data", terminalData, "from terminal", terminalId)
+          this.terminalService.writeBin(
+            socket.id,
+            terminalId,
+            Buffer.from(terminalData, "binary")
+          );
+        }
+      );
 
       socket.on("close", () => {
         console.log("Closing terminal session", socket.id);
         this.terminalService.kill(socket.id);
-        fs.rmdirSync(`${process.env.HOME}/${this.playgroundId}`, { recursive: true });
-
+        fs.rmdirSync(`${process.env.HOME}/${this.playgroundId}`, {
+          recursive: true,
+        });
       });
     });
   }

@@ -1,6 +1,10 @@
 import { IPty, spawn } from "node-pty";
+import * as os from "node:os";
+const SHELL = os.platform() === "win32" ? "powershell.exe" : "bash";
 export default class TerminalService {
-  private sessions: { [id: string]: { terminal: IPty; playgroundId: string }[] } = {};
+  private sessions: {
+    [id: string]: { terminal: IPty; playgroundId: string }[];
+  } = {};
 
   constructor() {
     this.sessions = {};
@@ -15,7 +19,7 @@ export default class TerminalService {
     playgroundId: string;
     onData: (data: any, pid: string) => void;
   }) {
-    const terminal = spawn("bash", [], {
+    const terminal = spawn(SHELL, [], {
       name: "xterm-color",
       cwd: `${process.env.HOME}/${playgroundId}`,
       env: process.env as { [key: string]: string },
@@ -28,10 +32,15 @@ export default class TerminalService {
     this.sessions[sessionId].push({
       terminal: terminal,
       playgroundId: playgroundId,
-    })
+    });
 
-    console.log("Created terminal", sessionId, playgroundId, terminal.pid.toString());
-    console.table(this.sessions[sessionId])
+    console.log(
+      "Created terminal",
+      sessionId,
+      playgroundId,
+      terminal.pid.toString()
+    );
+    console.table(this.sessions[sessionId]);
 
     terminal.onExit(() => {
       delete this.sessions[sessionId];
@@ -45,22 +54,32 @@ export default class TerminalService {
     let term = this.sessions[sessionId]?.[terminalId];
     if (term) {
       term.terminal.write(data);
+    } else {
+      console.log("Terminal not found");
     }
-    else {
+  }
+
+  writeBin(sessionId: string, terminalId: number, data: any) {
+    console.log("bin data", data);
+    // console.log("Writing to terminal", sessionId, terminalId, data)
+    // console.log(this.sessions[sessionId])
+    let term = this.sessions[sessionId]?.[terminalId];
+    if (term) {
+      term.terminal.write(data);
+    } else {
       console.log("Terminal not found");
     }
   }
 
   kill(sessionId: string, terminalId: number = -1) {
-    if (terminalId === -1) {  // kill all terminals
+    if (terminalId === -1) {
+      // kill all terminals
       this.sessions[sessionId]?.forEach(({ terminal }) => {
-        terminal.kill()
-      })
+        terminal.kill();
+      });
       delete this.sessions[sessionId];
-    }
-    else {
+    } else {
       this.sessions[sessionId]?.[terminalId].terminal.kill();
     }
-
   }
 }

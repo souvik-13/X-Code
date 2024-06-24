@@ -7,6 +7,7 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
+import { Fragment } from "react";
 
 interface FilePathBreadcrumbProps {
   children?: React.ReactNode;
@@ -26,12 +27,12 @@ export const FilePathBreadcrumb = ({
       <BreadcrumbList>
         {paths.map((path, index) => {
           return (
-            <>
-              <BreadcrumbItem key={index}>
+            <Fragment key={index}>
+              <BreadcrumbItem>
                 <BreadcrumbLink href="#">{path}</BreadcrumbLink>
               </BreadcrumbItem>
               <BreadcrumbSeparator />
-            </>
+            </Fragment>
           );
         })}
         <BreadcrumbItem>

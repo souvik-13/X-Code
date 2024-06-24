@@ -1,6 +1,6 @@
 import { atom } from "recoil";
 
-type ProjectInfo = {
+interface ProjectInfo {
   name: string;
   description: string;
   createdAt?: Date;

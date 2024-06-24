@@ -10,7 +10,6 @@ import {
 } from "lucide-react";
 import React, { useCallback, useRef } from "react";
 import { useEffect, useState } from "react";
-import { Socket } from "socket.io-client";
 import { Terminal } from "@xterm/xterm";
 import "@xterm/xterm/css/xterm.css";
 import { FitAddon } from "@xterm/addon-fit";
@@ -18,13 +17,15 @@ import { CanvasAddon } from "@xterm/addon-canvas";
 import { WebLinksAddon } from "@xterm/addon-web-links";
 import { Unicode11Addon } from "@xterm/addon-unicode11";
 import { useRecoilValue } from "recoil";
-import { projectInfoAtom } from "@/store/atoms/projectInfo";
+import { projectInfoAtom } from "@/store/atoms/playground/projectInfo";
 import { toast } from "sonner";
 
-import "./terminal.css"
+import "./terminal.css";
+import { useSocket } from "@/context/socket-provider";
+import { themes } from "@/lib/terminal-theme";
+import { useThrottle } from "@/hooks/useThrottle";
 
 interface TerminalsProps {
-  socket: Socket;
   terminalOpen: boolean;
   playgroundId: string;
   collapse?: () => void;
@@ -42,19 +43,27 @@ const termColors = [
   "term_pink",
 ] as const;
 
-
 function ab2str(buffer: Buffer | ArrayBuffer) {
   const decoder = new TextDecoder("utf-8");
   return decoder.decode(buffer);
 }
 
 const Terminals = ({
-  socket,
   terminalOpen,
   collapse,
   expand,
   playgroundId,
 }: TerminalsProps) => {
+  const {
+    isConnected,
+    workspaceLoaded,
+    requestTerminal,
+    killTerminalReq,
+    sendTerminalData,
+    sendTerminalDataBin,
+    recTerminalData,
+  } = useSocket();
+
   // const projectInfo = useRecoilValue(projectInfoAtom);
   const collapseTerminals = useCallback(() => {
     // collapse();
@@ -63,13 +72,9 @@ const Terminals = ({
     // expand();
   }, []);
 
-  const [loading, setLoading] = useState(true);
-
-
   const [terminals, setTerminals] = useState<
     { pid?: string; term?: Terminal; color?: string }[]
   >(Array(9).fill({}));
-
 
   const [activeTerminal, setActiveTerminal] = useState<string | null>(null);
 
@@ -78,7 +83,7 @@ const Terminals = ({
   }, [activeTerminal]);
 
   const createTerminal = useCallback(() => {
-    if (!socket) {
+    if (!isConnected) {
       console.log("socket not connected");
       return;
     }
@@ -97,15 +102,16 @@ const Terminals = ({
     const term = new Terminal({
       cursorBlink: true,
       cursorStyle: "bar",
-      // cols: 100,
+      cols: 100,
       // rows: 30,
+
       fontSize: 14,
-      fontFamily: "consolas",
-      theme: {
-        background: "#000",
-        foreground: "#fff",
-      },
+      fontFamily: "'FiraCode Nerd Font', monospace",
+      theme: themes["night-owl"],
     });
+
+    console.log(themes["night-owl"]);
+
     const fitAddon = new FitAddon();
     const canvasAddon = new CanvasAddon();
     const webLinksAddon = new WebLinksAddon();
@@ -117,39 +123,32 @@ const Terminals = ({
 
     // term.unicode.activeVersion = "11";
 
-    socket.emit("request-terminal", {
-      terminalId: index,
-      playgroundId,
-    });
+    requestTerminal(index, playgroundId);
 
     term.open(document.getElementById(`term-${index}`) as HTMLDivElement);
-    fitAddon.fit();
+
+    const handleResize = () => {
+      fitAddon.fit();
+    };
 
     // Use ResizeObserver to resize the terminal on div element resize
     const resizeObserver = new ResizeObserver(() => {
-      console.log("resizing terminal", index);
-      fitAddon.fit();
+      handleResize();
     });
 
     // Start observing the terminalElement for size changes
     resizeObserver.observe(
-      document.getElementById(`term-${index}`) as HTMLDivElement,
+      document.getElementById(`term-${index}`) as HTMLDivElement
     );
 
     term.onData((data: any) => {
       // console.log("data", data);
-      socket.emit("terminal-data", {
-        terminalId: index,
-        data: data,
-      });
+      sendTerminalData(index, data);
     });
 
     term.onBinary((data: any) => {
-      console.log("binary data", data);
-      socket.emit("terminal-data", {
-        terminalId: index,
-        data: data,
-      });
+      // console.log("binary data", data);
+      sendTerminalDataBin(index, data);
     });
 
     setTerminals((prev) => {
@@ -159,11 +158,11 @@ const Terminals = ({
       return newTerminals;
     });
     setActiveTerminal(index.toString());
-  }, [playgroundId, socket, terminals]);
+  }, [playgroundId, isConnected, terminals]);
 
   const killTerminal = useCallback(
     (index: number) => {
-      if (!socket) {
+      if (!isConnected) {
         console.log("socket not connected");
         return;
       }
@@ -174,7 +173,7 @@ const Terminals = ({
       //   return;
       // }
 
-      socket.emit("kill-terminal", { terminalId: index });
+      killTerminalReq(index);
 
       if (index === 0) {
         if (terminals[1].term) {
@@ -193,18 +192,17 @@ const Terminals = ({
         return newTerminals;
       });
     },
-    [socket],
+    [isConnected]
   );
 
   // listen for terminal data from server
   useEffect(() => {
-    if (!socket) return;
+    if (!isConnected) return;
 
     const index = terminals.findIndex((terminal) => !terminal.term);
     if (index === -1) return;
 
-    socket.on("terminal-data", (data) => {
-      const { terminalId, terminalData, pid } = data;
+    recTerminalData(({ terminalId, terminalData, pid }) => {
       if (!terminals[terminalId]) {
         console.log("Terminal not found");
         return;
@@ -216,19 +214,19 @@ const Terminals = ({
         console.log("Terminal not found");
       }
     });
+
     return () => {
-      socket.off("terminal-data");
+      // socket.off("terminal-data");
     };
-  }, [socket, terminals, createTerminal, activeTerminal]);
+  }, [isConnected, terminals, createTerminal, activeTerminal]);
 
   // load terminal when workspace is ready
   useEffect(() => {
-    if (!socket) return;
-    socket.on("workspace-ready", () => {
-      setLoading(false);
-      if(!activeTerminal) createTerminal();
-    })
-  }, [socket, createTerminal, activeTerminal]);
+    if (!isConnected) return;
+    if (workspaceLoaded) {
+      if (!activeTerminal) createTerminal();
+    }
+  }, [isConnected, createTerminal, activeTerminal, workspaceLoaded]);
 
   return (
     <div className="w-full h-full">
@@ -246,8 +244,9 @@ const Terminals = ({
                   key={index}
                   className={cn(
                     "h-full w-max px-4 flex items-center justify-end gap-2 text-sm  cursor-pointer group",
-                    activeTerminal === index.toString() ? `${terminal.color}_active` : terminal.color,
-
+                    activeTerminal === index.toString()
+                      ? `${terminal.color}_active`
+                      : terminal.color
                   )}
                   onClick={() => {
                     setActiveTerminal(index.toString());
@@ -257,7 +256,9 @@ const Terminals = ({
                   <XIcon
                     size={20}
                     strokeWidth={2}
-                    className={cn("flex-none cursor-pointer hover:bg-accent-foreground/20 group-hover:block opacity-0 group-hover:opacity-100")}
+                    className={cn(
+                      "flex-none cursor-pointer hover:bg-accent-foreground/20 group-hover:block opacity-0 group-hover:opacity-100"
+                    )}
                     onClick={() => {
                       killTerminal(index);
                     }}
@@ -290,20 +291,26 @@ const Terminals = ({
         )}
       </div>
       {/* terminals */}
-      <div className="w-full h-full relative">
-        {terminals.map((terminal, index) => {
-          return (
-            <div
-              key={index}
-              id={`term-${index}`}
-              // id="term-0"
-              // ref={(element) => assignTerminalRef(element!, index)}
-              className={cn("absolute top-0 bottom-0 left-0 right-0", {
-                hidden: !terminal.term || activeTerminal !== index.toString(),
-              })}
-            ></div>
-          );
-        })}
+      <div id="terminal-container" className="w-full h-full relative">
+        {workspaceLoaded ? (
+          terminals.map((terminal, index) => {
+            return (
+              <div
+                key={index}
+                id={`term-${index}`}
+                // id="term-0"
+                // ref={(element) => assignTerminalRef(element!, index)}
+                className={cn("absolute top-0 bottom-0 left-0 right-0", {
+                  hidden: !terminal.term || activeTerminal !== index.toString(),
+                })}
+              ></div>
+            );
+          })
+        ) : (
+          <div className="w-full h-full grid place-items-center">
+            <h1 className="animate-pulse">Loading...</h1>
+          </div>
+        )}
       </div>
     </div>
   );

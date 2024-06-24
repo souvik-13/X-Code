@@ -1,15 +1,15 @@
 import { cn } from "@/lib/utils";
 import { ChevronRight, ChevronDown, CopyXIcon, X } from "lucide-react";
 import { EachNode } from "./EachNode";
-import { explorerTabsAtom, openFilesAtom, currentFileAtom } from "@/store/atoms";
+import { explorerTabsAtom, openFilesAtom, selectedFileAtom } from "@/store/atoms";
 import { useRecoilState } from "recoil";
 
 const OpenFiles = () => {
     const [explorerTabs, setExplorerTabs] = useRecoilState(explorerTabsAtom);
     const [openFiles, setOpenFiles] = useRecoilState(openFilesAtom);
-    const [currentFile, setCurrentFile] = useRecoilState(currentFileAtom);
+    const [currentFile, setCurrentFile] = useRecoilState(selectedFileAtom);
     return (
-        <section className="w-full group my-4">
+        <div className="w-full group my-4">
             <div className="w-full flex items-center p-2">
                 <span className="text-sm font-bold flex-grow flex items-center justify-start">
                     <span
@@ -81,7 +81,7 @@ const OpenFiles = () => {
                     );
                 })}
             </div>
-        </section>
+        </div>
     );
 }
 

@@ -1,4 +1,4 @@
-import { currentFileAtom, openFilesAtom, themeAtom } from "@/store/atoms";
+import { selectedFileAtom, openFilesAtom, themeAtom } from "@/store/atoms";
 import { useRecoilState, useRecoilValue } from "recoil";
 import { Socket } from "socket.io-client";
 import { FilePathBreadcrumb } from "./file-path-breadcrumb";
@@ -8,19 +8,21 @@ import { toast } from "sonner";
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { themePaths } from "./CodeEditorThemes";
+import { useSocket } from "@/context/socket-provider";
+import { debounce } from "lodash";
 
-interface EditorComponentProps {
-  socket: Socket;
-}
+interface EditorComponentProps {}
 
-const EditorComponent = ({ socket }: EditorComponentProps) => {
+const EditorComponent = ({}: EditorComponentProps) => {
   const monaco = useMonaco();
   const editorRef = useRef(null);
   const [openFiles, setOpenFiles] = useRecoilState(openFilesAtom);
-  const [currentFile, setCurrentFile] = useRecoilState(currentFileAtom);
+  const [currentFile, setCurrentFile] = useRecoilState(selectedFileAtom);
   const [loading, setLoading] = useState<boolean>(true);
   const [code, setCode] = useState<any>();
   const [theme, setTheme] = useRecoilState(themeAtom);
+
+  const { isConnected, requestFileContent, workspaceLoaded } = useSocket();
 
   // useEffect(() => {}, []);
 
@@ -47,22 +49,33 @@ const EditorComponent = ({ socket }: EditorComponentProps) => {
       return;
     } else {
       setLoading(true);
-      if (!socket) {
+      if (!isConnected) {
         toast.error("Socket not connected");
         return;
       }
-      socket.emit("get-file-content", { filePath: currentFile.path });
-      socket.on("file-content", (data) => {
+      requestFileContent(currentFile.path, (data) => {
         const { content } = data;
         setCurrentFile({ ...currentFile, content });
       });
     }
-  }, [currentFile, loading, setCurrentFile, socket]);
+  }, [currentFile, loading, setCurrentFile, isConnected]);
 
-  if (!socket) {
+  const debouncedSave = debounce((nextValue) => {
+    console.log(nextValue);
+  }, 1000);
+
+  if (!isConnected) {
     return (
       <div className="w-full h-full grid place-items-center">
         <h1 className="text-xl font-bold">Socket not connected</h1>
+      </div>
+    );
+  } else if (!workspaceLoaded) {
+    return (
+      <div className="w-full h-full grid place-items-center">
+        <h1 className="text-xl font-bold animate-pulse">
+          Loading workspace ...
+        </h1>
       </div>
     );
   } else if (!openFiles.length) {
@@ -77,37 +90,46 @@ const EditorComponent = ({ socket }: EditorComponentProps) => {
         <h1 className="text-xl font-bold">Open a file to edit</h1>
       </div>
     );
+  } else if (loading) {
+    return (
+      <div className="w-full h-full grid place-items-center">
+        <h1 className="text-xl font-bold animate-pulse">Fetching content</h1>
+      </div>
+    );
   } else {
     return (
       <div className="w-full h-full flex flex-col items-center justify-center">
         <section
           id="editor-bar"
-          className="w-full h-9 flex flex-nowrap items-center justify-start gap-1 overflow-y-scroll border-b-[1px] "
+          className="w-full h-9 flex flex-nowrap items-center justify-start gap-1 overflow-y-scroll border-b-[1px]"
+          style={{ scrollbarWidth: "none", scrollBehavior: "smooth" }}
         >
           {openFiles.map((f, index) => (
             <div
               key={index}
               className={cn(
                 "border-s-[1px] w-min h-full pl-2 pr-6 group flex items-center justify-start relative",
-                { " bg-foreground/20": f.path === currentFile.path },
+                { " bg-foreground/20": f.path === currentFile.path }
               )}
               onClick={(e) => {
                 e.stopPropagation();
                 setCurrentFile(f);
               }}
             >
-              <span className="font-light w-max">{f.name}</span>
+              <span className="font-light w-max">
+                {f.path.split("/").pop()}
+              </span>
               <X
                 size={16}
                 strokeWidth={1.25}
                 className={cn(
-                  "absolute right-1 hidden rounded-sm cursor-pointer  group-hover:block text-accent-foreground group-hover:bg-accent-foreground/20",
+                  "absolute right-1 hidden rounded-sm cursor-pointer  group-hover:block text-accent-foreground group-hover:bg-accent-foreground/20"
                 )}
                 onClick={(e) => {
                   e.stopPropagation();
 
                   const currentIndex = openFiles.findIndex(
-                    (_f) => _f.path === f.path,
+                    (_f) => _f.path === f.path
                   );
 
                   if (currentIndex === 0) {
@@ -127,20 +149,17 @@ const EditorComponent = ({ socket }: EditorComponentProps) => {
           ref={editorRef}
           className="w-full h-full flex flex-col items-center justify-start "
         >
-          <FilePathBreadcrumb className="w-full flex-none" filePath={currentFile.path} />
+          <FilePathBreadcrumb
+            className="w-full flex-none"
+            filePath={currentFile.path}
+          />
           <Editor
             theme={theme}
             value={code}
             onChange={(value) => {
               setCode(value);
-              if (!socket) {
-                toast.error("Socket not connected");
-                return;
-              }
-              socket.emit("update-file-content", {
-                filePath: currentFile.path,
-                content: value,
-              });
+              // get the change
+              debouncedSave(value);
             }}
             language={currentFile.lang}
             loading={<div>Fetching content</div>}

@@ -57,7 +57,7 @@ const frameworks: FrameWork[] = [
   {
     value: "next.js",
     label: "Next.js",
-    available: true,
+    available: false,
     template: "nextjs-base",
   },
   { value: "cpp", label: "C++", available: true, template: "cpp-base" },

@@ -1,35 +1,42 @@
 import fs from "node:fs";
 import path from "node:path";
+import { NodeType } from "../types";
 
-type NodeType = {
-  isFolder: boolean;
-  path: string;
-  children?: NodeType[];
-};
-
-export const fetchDir = async (
-  dir: string,
-  baseDir: string = ""
-): Promise<NodeType[]> => {
+export const fetchDir = async ({
+  dir,
+  baseDir = "",
+  exclude = [],
+}: {
+  dir: string;
+  baseDir: string;
+  exclude?: string[];
+}): Promise<NodeType> => {
   return new Promise((resolve, reject) => {
+    const fileTree: NodeType = {
+      isFolder: true,
+      path: dir,
+      children: [],
+    };
     fs.readdir(
       path.join(baseDir, dir),
       { withFileTypes: true },
-      (err, files) => {
+      (err, nodes) => {
         if (err) {
           reject(err);
         }
 
-        const fileTree: NodeType[] = [];
-        files.forEach((file) => {
+        nodes.forEach((node) => {
+          if (exclude.includes(node.name)) {
+            return;
+          }
           // replace the baseDir path with ""
-          fileTree.push({
-            isFolder: file.isDirectory(),
-            path: path.relative(baseDir, path.join(file.parentPath, file.name)),
+          fileTree.children?.push({
+            isFolder: node.isDirectory(),
+            path: path.relative(baseDir, path.join(node.parentPath, node.name)),
           });
         });
 
-        fileTree.sort((a, b) => {
+        fileTree.children?.sort((a, b) => {
           if (a.isFolder === b.isFolder) {
             let a_name = a.path.split("/").pop() || "";
             let b_name = b.path.split("/").pop() || "";
@@ -43,9 +50,9 @@ export const fetchDir = async (
   });
 };
 
-fetchDir(".", "/home/souvik/webdev/vite-project").then((data) => {
-  console.log(data);
-}).catch((err) => {console.log(err)});
+// fetchDir(".", "/home/souvik/webdev/vite-project").then((data) => {
+//   console.log(data);
+// }).catch((err) => {console.log(err)});
 
 export const fetchFileContent = (
   filePath: string,

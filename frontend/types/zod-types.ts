@@ -9,6 +9,7 @@ export type PersonType = z.infer<typeof personSchema>;
 export const folderNameSchema = z
   .string()
   .trim() // Remove leading/trailing whitespace
+  .min(1) // Must have at least one character
   .refine((str) => !/[/\\?*:<>"]/.test(str), {
     message:
       'Invalid characters. Folder names cannot contain /, \\, ?, *, :, <, >, or " characters',
@@ -21,6 +22,10 @@ export const fileNameSchema = z
   .refine((str) => !/[/\\?*:<>"]/.test(str), {
     message:
       'Invalid characters. File names cannot contain /,\\, ?, *, :, <, >, or " characters',
+  })
+  .refine((str) => !/\s/.test(str), {
+    // Disallow spaces
+    message: "File names cannot contain spaces",
   });
 export type FileNameType = z.infer<typeof fileNameSchema>;
 

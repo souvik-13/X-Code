@@ -6,7 +6,7 @@ import { useRecoilState } from "recoil";
 const Heading = () => {
     const [explorerTabs, setExplorerTabs] = useRecoilState(explorerTabsAtom);
     return (
-        <section className="w-full flex items-center justify-between p-2">
+        <div className="w-full flex items-center justify-between p-2">
             <span className="text-xs text-muted-foreground ">EXPLORER</span>
             <Popover>
                 <PopoverTrigger>
@@ -41,7 +41,7 @@ const Heading = () => {
                     ))}
                 </PopoverContent>
             </Popover>
-        </section>
+        </div>
     );
 }
 

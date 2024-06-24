@@ -3,3 +3,8 @@ export interface NodeType  {
   path: string;
   children?: NodeType[];
 };
+
+export interface FileNode extends NodeType {
+  lang?: string;
+  content?: string;
+};

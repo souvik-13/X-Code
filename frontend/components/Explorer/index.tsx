@@ -1,4 +1,9 @@
-import { currentFileAtom, fileTreeAtom, openFilesAtom } from "@/store/atoms";
+import {
+  explorerTabsAtom,
+  fileTreeAtom,
+  openFilesAtom,
+  selectedFolderAtom,
+} from "@/store/atoms";
 import React, { useEffect, useState } from "react";
 import {
   RecoilState,
@@ -9,70 +14,57 @@ import {
 import { Socket } from "socket.io-client";
 import { toast } from "sonner";
 
-import {
-  ChevronDown,
-  ChevronRight,
-  CopyMinus,
-  File,
-  FilePlus2,
-  Files as FilesIcon,
-  Folder,
-  FolderOpenIcon,
-  FolderPlus,
-  RotateCcw,
-  EllipsisIcon,
-  CopyXIcon,
-  X,
-  Search,
-} from "lucide-react";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { cn } from "@/lib/utils";
-import { projectInfoAtom } from "@/store/atoms/projectInfo";
-import { findLang } from "@/lib/find-lang";
-import { EachNode } from "./EachNode";
 import Files from "./Files";
-import { explorerTabsAtom } from "@/store/atoms/explorerTabs";
 import OpenFiles from "./OpenFiles";
-import Head from "next/head";
 import Heading from "./Heading";
+import { useSocket } from "@/context/socket-provider";
+import { projectInfoAtom } from "@/store/atoms/playground/projectInfo";
 
-interface ExplorerProps {
-  socket: Socket;
-}
+interface ExplorerProps {}
 
-export default function Explorer({ socket }: ExplorerProps) {
+export default function Explorer({}: ExplorerProps) {
+  const projectInfo = useRecoilValue(projectInfoAtom);
   const [fileTree, setFileTree] = useRecoilState(fileTreeAtom);
+  const [currentFolder, setCurrentFolder] = useRecoilState(selectedFolderAtom);
   const [explorerTabs, setExplorerTabs] = useRecoilState(explorerTabsAtom);
+  const [loading, setLoading] = useState<boolean>(true);
+  const { isConnected, requestWorkspace, requestDirectory } = useSocket();
+
   useEffect(() => {
-    if (!socket) {
+    if (!isConnected) {
       toast.error("Socket not connected");
       return;
     }
-    socket.on("workspace-ready", (data) => {
-      setFileTree(data.fileTree);
-    });
-
-    return () => {
-      if (socket) {
-        socket.off("workspace-ready");
+    requestWorkspace(projectInfo.name, (data) => {
+      if (data.error) {
+        toast.error(data.error);
+        return;
       }
-    }
-  }, [setFileTree, socket]);
+      if (data.status === "success") {
+        requestDirectory(".", ({ status, error, dirPath, content }) => {
+          if (error) {
+            toast.error("error fetching dir");
+            return;
+          }
+          if (status === "success") {
+            setFileTree(content!);
+            setLoading(false);
+          }
+        });
+      }
+    });
+  }, [isConnected]);
 
   return (
-    <section id="explorer" className="w-full h-full flex flex-col items-center">
+    <div id="explorer" className="w-full h-full flex flex-col items-center">
       {/* heading */}
       <Heading />
       {/* files */}
-      <Files socket={socket} />
+      <Files loading={loading} setLoading={setLoading} />
       {/* open Files */}
       <OpenFiles />
       {/* search */}
       {/* <Search /> */}
-    </section>
+    </div>
   );
 }
