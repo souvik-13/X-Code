@@ -1,9 +1,24 @@
-import HomePage from "@/views/Home";
+"use server";
+import Landing from "@/views/Landing";
 
-export default function Home() {
-  return (
-    <main className="absolute top-0 left-0 w-full h-full grid place-items-center">
-      <HomePage />
-    </main>
-  );
+import { authOptions } from "@/lib/auth";
+import { getServerSession } from "next-auth";
+import { redirect } from "next/navigation";
+
+const getUserDetails = async () => {
+  // console.log('get user details start');
+  // const date = new Date();
+  const session = await getServerSession(authOptions);
+  // console.log(
+  //   `get user details end ${  (new Date().getTime() - date.getTime()) / 1000}`,
+  // );  
+  return session;
+};
+
+export default async function Home() {
+  const session = await getUserDetails();
+  if (session) {
+    redirect("/~");
+  }
+  return <Landing />;
 }

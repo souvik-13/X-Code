@@ -3,19 +3,14 @@ import { RecoilRoot } from "recoil";
 import * as React from "react";
 import { Toaster } from "@/components/ui/sonner";
 import { ThemeProvider } from "./theme-provider";
-import { SessionProvider } from "next-auth/react";
+import { SessionProvider, useSession } from "next-auth/react";
 
 export const Providers = ({ children }: { children: React.ReactNode }) => {
   return (
-    <ThemeProvider
-      attribute="class"
-      defaultTheme="dark"
-      enableSystem
-      disableTransitionOnChange
-    >
-      {/* <SessionProvider> */}
+    <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+      <SessionProvider>
         <RecoilRoot>{children}</RecoilRoot>
-      {/* </SessionProvider> */}
+      </SessionProvider>
 
       <Toaster richColors position="top-center" />
     </ThemeProvider>

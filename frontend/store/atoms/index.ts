@@ -1,5 +1,8 @@
 // Add new atoms here
 
+// home
+export * from "./home/layout";
+
 // playground
 export * from "./playground/projectInfo";
 export * from "./playground/projectName";
