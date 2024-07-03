@@ -15,12 +15,13 @@ datasource db {
 
 model User {
   id            String       @id @default(cuid())
-  name          String?
+  name          String
   email         String       @unique
   emailVerified DateTime?
   image         String?
-  userName      String?      @unique
-  url           String?
+  bannerImage   String?
+  userName      String       @unique
+  url           String
   accounts      Account[]
   sessions      Session[]
   Playgrounds   Playground[]

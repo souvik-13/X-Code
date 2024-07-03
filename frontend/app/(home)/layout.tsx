@@ -28,12 +28,14 @@ export default async function HomePageLayout({
   return (
     session && (
       <main className="relative h-screen w-screen">
-        <Topbar className="fixed left-0 right-0 top-0 h-10 border" />
+        <Topbar className="h-topbar absolute left-0 right-0 top-0 border" />
         <div className="absolute bottom-0 left-0 right-0 top-10 flex">
-          <Sidebar className="h-full max-w-56" />
+          <Sidebar className="h-full max-w-56 " />
           <div className="flex-1">
-            {/* push notification */}
-            {children}
+            <div className="relative">
+              {/* push notification */}
+              {children}
+            </div>
           </div>
         </div>
       </main>

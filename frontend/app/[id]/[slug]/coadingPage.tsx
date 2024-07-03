@@ -1,60 +1,20 @@
-"use client";
-import { Suspense, useEffect, useRef, useState } from "react";
-
-import Navbar from "@/components/playground/Navbar";
-import Explorer from "@/components/playground/Explorer";
-import Outputs from "@/components/playground/Outputs";
-import Terminals from "@/components/playground/Terminals";
 import Editor from "@/components/playground/Editor";
+import Explorer from "@/components/playground/Explorer";
+import Navbar from "@/components/playground/Navbar";
+import Terminals from "@/components/playground/Terminals";
 
 import {
   ResizableHandle,
   ResizablePanel,
   ResizablePanelGroup,
 } from "@/components/ui/resizable";
-// import { useSocket } from "@/hooks/useSocket";
-import { useRecoilState, useRecoilValue } from "recoil";
-import { projectInfoAtom } from "@/store/atoms/playground/projectInfo";
-import { SocketProvider, useSocket } from "@/context/socket-provider";
+import { useSocket } from "@/context/socket-provider";
 
-export default function Page({ params }: { params: { id: string } }) {
-  const [podCreated, setPodCreated] = useState(false);
-  const [projectInfo, setProjectInfo] = useRecoilState(projectInfoAtom);
+import { projectInfoAtom } from "@/store/atoms";
+import { useRef, useState } from "react";
+import { useRecoilValue } from "recoil";
 
-  useEffect(() => {
-    setTimeout(() => {
-      setPodCreated(true);
-      setProjectInfo({
-        name: params.id,
-        description: "A playground for testing code",
-      });
-    }, 0);
-  }, [setPodCreated, setProjectInfo, params.id]);
-
-  return (
-    <main>
-      <Suspense fallback={<BeforeBooting />}>
-        {podCreated ? (
-          <SocketProvider playgroundId={params.id}>
-            <CoadingPage playgroundId={params.id} />
-          </SocketProvider>
-        ) : (
-          <BeforeBooting />
-        )}
-      </Suspense>
-    </main>
-  );
-}
-
-function BeforeBooting() {
-  return (
-    <div className="flex h-full w-full items-center justify-center">
-      <h1>Creating pod...</h1>
-    </div>
-  );
-}
-
-function CoadingPage(params: { playgroundId: string }) {
+export function CoadingPage(params: { playgroundId: string }) {
   const projectInfo = useRecoilValue(projectInfoAtom);
   const terminalRef = useRef<HTMLDivElement>(null);
   const { isConnected } = useSocket();

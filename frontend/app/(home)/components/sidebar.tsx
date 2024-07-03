@@ -10,6 +10,8 @@ import { useEffect } from "react";
 
 // icons
 import { LuHome, LuFolder } from "react-icons/lu";
+import CreatePlaygroundDialogue from "./create-playground";
+import ImportFromGitHub from "./inport-from-github";
 
 interface SidebarProps {
   className?: string;
@@ -34,19 +36,23 @@ const Sidebar = ({ className }: SidebarProps) => {
         style={{ scrollbarWidth: "thin" }}
       >
         <div className="w-full space-y-2">
-          <div className="flex w-full cursor-pointer items-center justify-center text-nowrap rounded-lg border px-4 py-2 text-sm transition-colors hover:bg-accent/50 hover:animate-in">
-            <span className="mx-2">
-              <LuPlus />
-            </span>
-            <span>Create Playground</span>
-          </div>
+          <CreatePlaygroundDialogue type="create">
+            <div className="flex cursor-pointer items-center justify-center text-nowrap rounded-lg border px-4 py-2 text-sm transition-colors hover:bg-accent/50 hover:animate-in md:w-48">
+              <span className="mx-2">
+                <LuPlus />
+              </span>
+              <span>Create Playground</span>
+            </div>
+          </CreatePlaygroundDialogue>
 
-          <div className="flex w-full cursor-pointer items-center justify-center text-nowrap rounded-lg border px-4 py-2 text-sm transition-colors hover:bg-accent/50 hover:animate-in">
-            <span className="mx-2">
-              <FaGithub />
-            </span>
-            <span>Import from GitHub</span>
-          </div>
+          <CreatePlaygroundDialogue type="import">
+            <div className="flex cursor-pointer items-center justify-center text-nowrap rounded-lg border px-4 py-2 text-sm transition-colors hover:bg-accent/50 hover:animate-in md:w-48">
+              <span className="mx-2">
+                <FaGithub />
+              </span>
+              <span>Import from GitHub</span>
+            </div>
+          </CreatePlaygroundDialogue>
         </div>
 
         <div className="w-full space-y-2">

@@ -18,6 +18,14 @@ const config = {
         "2xl": "1400px",
       },
     },
+    screens: {
+      xs: "480px",
+      sm: "640px",
+      md: "768px",
+      lg: "1024px",
+      xl: "1280px",
+      "2xl": "1536px",
+    },
     extend: {
       fontFamily: {
         heading: ['var(--font-heading)', ...fontFamily.sans],
@@ -27,6 +35,7 @@ const config = {
         "img-1": "url('/img1.avif')",
         "img-2": "url('/img2.jpg')",
         "img-3": "url('/img3.jpg')",
+        "default-banner": "url('/default-banner.webp')",
       },
       colors: {
         border: "hsl(var(--border))",
@@ -82,6 +91,9 @@ const config = {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
       },
+      height: {
+        "topbar": "var(--topbar-height)",
+      }
     },
   },
   plugins: [require("tailwindcss-animate")],

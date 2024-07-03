@@ -32,8 +32,10 @@ export function CustomPrismaAdapter(
         ...PrismaAdapter(p),
         createUser(user) {
             const userName = user.email.split("@")[0]
+            // const name = user.name ?? `user-${user.id}`
+            const name = user.name ?? userName
             return p.user.create({
-                data: { ...user, userName, url: `/@${userName}` },
+                data: { ...user, name, userName, url: `/profile/@${userName}` },
             })
         },
 
