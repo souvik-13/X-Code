@@ -1,37 +1,28 @@
-import { findLang } from "@/lib/find-lang";
-import { cn } from "@/lib/utils";
+import { Input } from "@/components/ui/input";
+import { useOnClickOutside } from "@/hooks/clickOutside";
+import { cn, findLang } from "@/lib/utils";
 import {
-  selectedFileAtom,
-  fileTreeAtom,
-  openFilesAtom,
-  selectedFolderAtom,
   explorerTabsAtom,
+  openFilesAtom,
+  selectedFileAtom,
+  selectedFolderAtom,
 } from "@/store/atoms";
+import { projectInfoAtom } from "@/store/atoms/playground/projectInfo";
+import { NodeType } from "@/types";
+import { fileNameSchema, folderNameSchema } from "@/validations";
 import {
-  FileIcon,
-  ChevronRightIcon,
-  FolderIcon,
   ChevronDownIcon,
-  FolderOpenIcon,
+  ChevronRightIcon,
+  CopyMinusIcon,
+  FileIcon,
   FilePlus2Icon,
+  FolderIcon,
+  FolderOpenIcon,
   FolderPlusIcon,
   RotateCcwIcon,
-  CopyMinusIcon,
 } from "lucide-react";
-import {
-  ChangeEventHandler,
-  KeyboardEventHandler,
-  useEffect,
-  useRef,
-  useState,
-} from "react";
-import { RecoilState, useRecoilState, useRecoilValue } from "recoil";
-import { NodeType } from "@/types";
-import { Input } from "@/components/ui/input";
-import { set } from "zod";
-import { useOnClickOutside } from "@/hooks/clickOutside";
-import { projectInfoAtom } from "@/store/atoms/playground/projectInfo";
-import { fileNameSchema, folderNameSchema } from "@/types/zod-types";
+import { useEffect, useRef, useState } from "react";
+import { useRecoilState, useRecoilValue } from "recoil";
 import { toast } from "sonner";
 
 interface EachNodeProps {
@@ -111,7 +102,7 @@ export const EachNode = ({
     <div
       className={cn(
         root ? "h-full" : "h-max",
-        "transition-all flex flex-col items-start justify-start w-full"
+        "transition-all flex flex-col items-start justify-start w-full",
       )}
       onClick={(e) => {
         e.stopPropagation();
@@ -135,7 +126,7 @@ export const EachNode = ({
                       return { ...innerTab, collapsed: !innerTab.collapsed };
                     }
                     return innerTab;
-                  })
+                  }),
                 );
                 setCollapsed(!collapsed);
               }}
@@ -152,7 +143,7 @@ export const EachNode = ({
           <div
             className={cn(
               "group-hover:flex items-center justify-center gap-1 hidden ",
-              { hidden: explorerTabs[0].collapsed }
+              { hidden: explorerTabs[0].collapsed },
             )}
             onClick={(e) => {
               e.preventDefault();
@@ -194,7 +185,7 @@ export const EachNode = ({
             "w-full flex items-center text-sm text-muted-foreground transition-all cursor-pointer",
             {
               "bg-foreground/20": highlight && currentFile?.path === node.path,
-            }
+            },
           )}
           onClick={async (e) => {
             // e.stopPropagation();
@@ -247,7 +238,8 @@ export const EachNode = ({
               "text-accent-foreground": currentFile?.path === node.path,
             })}
           >
-            {node.path.split("/").pop()}
+            {/* {node.path.split("/").pop()} */}
+            {node.name}
           </span>
         </div>
       )}
@@ -264,7 +256,7 @@ export const EachNode = ({
                   (addfileTrigger || addfolderTrigger) &&
                   node.isFolder &&
                   selectedFolder?.path === node.path,
-              }
+              },
             )}
           >
             <span className="pl-4">

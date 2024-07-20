@@ -1,5 +1,6 @@
 import {
   CopyObjectCommand,
+  ListObjectsCommand,
   ListObjectsV2Command,
   PutObjectCommand,
   S3Client,
@@ -23,7 +24,29 @@ class AwsService {
     });
   }
 
+  async fetchDirectory(
+    folderPrefix: string,
+    recursive = false,
+  ): Promise<string[]> {
+    try {
+      const files = await this.s3.send(
+        new ListObjectsCommand({
+          Bucket: process.env.S3_BUCKET_NAME ?? "",
+          Prefix: folderPrefix,
+        }),
+      );
+
+      console.log("Files in the directory:", files);
+
+      return files.Contents?.map((file) => file.Key ?? "") ?? [];
+    } catch (error) {
+      console.error("Error fetching directory from S3", error);
+      throw error;
+    }
+  }
+
   async createFolder(folderPrefix: string) {
+    console.trace("Creating folder in S3:", folderPrefix);
     try {
       await this.s3.send(
         new PutObjectCommand({
@@ -49,7 +72,7 @@ class AwsService {
 
       if (!srcFiles.Contents || srcFiles.Contents.length === 0) return;
 
-      // console.log("Files in the source folder:", srcFiles);
+      console.log("Files in the source folder:", srcFiles);
 
       // copy the files to the destination folder
       await Promise.all(

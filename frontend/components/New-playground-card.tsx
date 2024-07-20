@@ -1,13 +1,6 @@
 "use client";
 
-import { zodResolver } from "@hookform/resolvers/zod";
-import { Check, ChevronsUpDown } from "lucide-react";
-import { useForm } from "react-hook-form";
-import { z } from "zod";
-import { useRouter } from "next/navigation";
-import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import {
   Command,
   CommandEmpty,
@@ -24,19 +17,26 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { folderNameSchema } from "@/types/zod-types";
-import { randomNameGenerator } from "@/lib/random-name-generator";
-import axios from "axios";
-import { toast } from "sonner";
-import { useCallback, useEffect, useState } from "react";
-import { useRecoilState } from "recoil";
-import { projectNameAtom } from "@/store/atoms";
 import { Textarea } from "@/components/ui/textarea";
+import { randomNameGenerator } from "@/lib/random-name-generator";
+import { cn } from "@/lib/utils";
+import { projectNameAtom } from "@/store/atoms";
+import { folderNameSchema } from "@/types/zod-types";
+import { zodResolver } from "@hookform/resolvers/zod";
+import axios from "axios";
+import { ChevronsUpDown } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useCallback, useEffect, useState } from "react";
+import { useForm } from "react-hook-form";
+import { useRecoilState } from "recoil";
+import { toast } from "sonner";
+import { z } from "zod";
 
 type FrameWork = {
   value: string;
@@ -81,7 +81,7 @@ const FormSchema = z.object({
 });
 
 export default function NewPlaygroundCard() {
-  const [open, setOpen] = useState<boolean>(false);
+  const [open, setOpen] = useState<boolean>();
   const [projectName, setProjectName] = useRecoilState(projectNameAtom);
   const [status, setStatus] = useState<string>("");
   const router = useRouter();
@@ -115,7 +115,7 @@ export default function NewPlaygroundCard() {
               projectName: data.projectName,
               framework: data.frameWork,
               templateName: frameworks.find(
-                (framework) => framework.value === data.frameWork
+                (framework) => framework.value === data.frameWork,
               )?.template,
             })
             .then((res) => {
@@ -133,11 +133,11 @@ export default function NewPlaygroundCard() {
             error: () => {
               return "Error creating project ❌";
             },
-          }
+          },
         );
       }
     },
-    [status, setProjectName, router]
+    [status, setProjectName, router],
   );
 
   return (
@@ -172,7 +172,7 @@ export default function NewPlaygroundCard() {
           render={({ field }) => (
             <FormItem className="flex flex-col">
               <FormLabel>Framework</FormLabel>
-              <Popover open={open} onOpenChange={setOpen}>
+              <Popover open={open} defaultOpen onOpenChange={setOpen}>
                 <PopoverTrigger asChild>
                   <FormControl>
                     <Button
@@ -180,12 +180,12 @@ export default function NewPlaygroundCard() {
                       role="combobox"
                       className={cn(
                         "w-[200px] justify-between",
-                        !field.value && "text-muted-foreground"
+                        !field.value && "text-muted-foreground",
                       )}
                     >
                       {field.value
                         ? frameworks.find(
-                            (framework) => framework.value === field.value
+                            (framework) => framework.value === field.value,
                           )?.label
                         : "Select framework"}
                       <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
@@ -254,8 +254,8 @@ export default function NewPlaygroundCard() {
           {status === "loading"
             ? "Creating playground..."
             : status === "success"
-            ? "Playground created \n click to redirect ->"
-            : "Create Playground"}
+              ? "Playground created \n click to redirect ->"
+              : "Create Playground"}
         </Button>
       </form>
     </Form>

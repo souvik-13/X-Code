@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/popover";
 import { Session } from "next-auth";
 import { useCallback, useEffect, useState } from "react";
-import CreatePlaygroundDialogue from "./create-playground";
+import CreatePlaygroundDialogue from "../../../components/dialogues/create-playground";
 import SearchEngine from "./search-engine";
 
 interface ISession extends Session {

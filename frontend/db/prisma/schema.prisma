@@ -14,17 +14,18 @@ datasource db {
 }
 
 model User {
-  id            String       @id @default(cuid())
-  name          String
-  email         String       @unique
-  emailVerified DateTime?
-  image         String?
-  bannerImage   String?
-  userName      String       @unique
-  url           String
-  accounts      Account[]
-  sessions      Session[]
-  Playgrounds   Playground[]
+  id                    String             @id @default(cuid())
+  name                  String
+  email                 String             @unique
+  emailVerified         DateTime?
+  image                 String?
+  bannerImage           String?
+  userName              String             @unique
+  url                   String
+  accounts              Account[]
+  sessions              Session[]
+  Playgrounds           Playground[]
+  playgroundsAccessList PlaygroundAccess[]
   // Optional for WebAuthn support
   // Authenticator Authenticator[]
 
@@ -88,14 +89,31 @@ model VerificationToken {
 // }
 
 model Playground {
-  id          String   @id @default(uuid())
+  id          String             @id @default(uuid())
   ownerId     String
   name        String
   description String?
   image       String?
   url         String
-  private     Boolean  @default(false)
-  owner       User     @relation(fields: [ownerId], references: [id])
-  created     DateTime @default(now())
-  lastUpdated DateTime @updatedAt
+  private     Boolean            @default(false)
+  owner       User               @relation(fields: [ownerId], references: [id])
+  accessList  PlaygroundAccess[]
+  created     DateTime           @default(now())
+  lastUpdated DateTime           @updatedAt
+}
+
+enum Role {
+  OWNER
+  EDITOR
+  VIEWER
+}
+
+model PlaygroundAccess {
+  playgroundId String
+  userId       String
+  playground   Playground @relation(fields: [playgroundId], references: [id], onDelete: Cascade)
+  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role         Role       @default(VIEWER)
+
+  @@id([playgroundId, userId])
 }

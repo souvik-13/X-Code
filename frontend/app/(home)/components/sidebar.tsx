@@ -1,17 +1,15 @@
 "use client";
-import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { LayoutStateAtom } from "@/store/atoms";
-import { useRecoilValue } from "recoil";
-import { LuPlus } from "react-icons/lu";
-import { FaGithub } from "react-icons/fa";
 import Link from "next/link";
-import { useEffect } from "react";
+import { usePathname } from "next/navigation";
+import { FaGithub } from "react-icons/fa";
+import { LuPlus } from "react-icons/lu";
+import { useRecoilValue } from "recoil";
 
 // icons
-import { LuHome, LuFolder } from "react-icons/lu";
-import CreatePlaygroundDialogue from "./create-playground";
-import ImportFromGitHub from "./inport-from-github";
+import { LuFolder, LuHome } from "react-icons/lu";
+import CreatePlaygroundDialogue from "../../../components/dialogues/create-playground";
 
 interface SidebarProps {
   className?: string;

@@ -1,16 +1,14 @@
 "use client";
 
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogHeader,
-  DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import CreatePlaygroundDialogue from "./create-playground";
-import { Button } from "@/components/ui/button";
 import { useState } from "react";
+import CreatePlaygroundDialogue from "../../../components/dialogues/create-playground";
 
 interface ImportFromGitHubProps {
   children: React.ReactNode;

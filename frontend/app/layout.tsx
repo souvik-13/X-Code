@@ -1,10 +1,8 @@
-import type { Metadata } from "next";
-import { Inter } from "next/font/google";
-import { Comfortaa } from "next/font/google";
-import { Gabarito } from "next/font/google";
-import "./globals.css";
 import { Providers } from "@/context/Providers";
 import { cn } from "@/lib/utils";
+import type { Metadata } from "next";
+import { Comfortaa, Gabarito, Inter } from "next/font/google";
+import "./globals.css";
 
 const inter = Inter({ subsets: ["latin"] });
 

@@ -6,8 +6,7 @@
   "scripts": {
     "start": "node --env-file=.env dist/index.js",
     "dev": "tsc-watch --onSuccess \"node --env-file=.env.local dist/index.js\"",
-    "build": "tsc -p .",
-    "server:add": "pnpm add"
+    "build": "tsc -p ."
   },
   "devDependencies": {
     "@types/cors": "^2.8.17",

@@ -13,6 +13,7 @@ export const fetchDir = async ({
 }): Promise<NodeType> => {
   return new Promise((resolve, reject) => {
     const fileTree: NodeType = {
+      name: path.basename(dir),
       isFolder: true,
       path: dir,
       children: [],
@@ -33,6 +34,7 @@ export const fetchDir = async ({
           fileTree.children?.push({
             isFolder: node.isDirectory(),
             path: path.relative(baseDir, path.join(node.parentPath, node.name)),
+            name: node.name,
           });
         });
 
